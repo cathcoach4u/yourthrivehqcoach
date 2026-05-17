@@ -49,6 +49,12 @@
     }
     .whatsapp-btn:hover { background: #1ebe5d; color: white; text-decoration: none; }
 
+    .session-card--coachHQ { box-shadow: 0 4px 12px rgba(217,119,6,0.20); }
+    .session-card--coachHQ .session-card-header {
+      background: linear-gradient(135deg, #92400E 0%, #D97706 100%);
+    }
+    .session-card--coachHQ .session-card-body { border-color: #D97706; }
+
     .no-sessions-note {
       font-size: 15px; color: var(--text-muted); padding: 20px;
       text-align: center; background: white;
@@ -124,19 +130,41 @@
         if (res.ok && Array.isArray(data)) sessions = data;
       } catch(e) {}
 
-      if (sessions.length === 0) {
+      // Remove any Tuesday entries from Supabase (Vanessa's session removed)
+      var filtered = sessions.filter(function(s) {
+        return s.day_of_week.toLowerCase() !== 'tuesday';
+      });
+
+      // Hardcoded CoachHQ Tuesday session
+      var coachHQSession = {
+        host_name: 'Cath Baker',
+        day_of_week: 'Tuesday',
+        day_order: 2,
+        start_time: '6:00 PM',
+        end_time: null,
+        isCoachHQ: true
+      };
+
+      var allSessions = [coachHQSession].concat(filtered);
+      allSessions.sort(function(a, b) { return (a.day_order || 99) - (b.day_order || 99); });
+
+      if (allSessions.length === 0) {
         grid.outerHTML = '<div class="no-sessions-note">No sessions scheduled yet — why not become the first host?</div>';
         return;
       }
-      grid.innerHTML = sessions.map(function(s) {
-        return '<div class="session-card">' +
+      grid.innerHTML = allSessions.map(function(s) {
+        var isCoach = !!s.isCoachHQ;
+        var cardClass = 'session-card' + (isCoach ? ' session-card--coachHQ' : '');
+        var label = isCoach ? 'CoachHQ' : 'Weekly';
+        var timeStr = isCoach ? s.start_time + ' AEST' : s.start_time + ' – ' + s.end_time + ' AEST';
+        return '<div class="' + cardClass + '">' +
           '<div class="session-card-header">' +
-            '<div class="session-day-label">Weekly</div>' +
+            '<div class="session-day-label">' + label + '</div>' +
             '<div class="session-day-name">' + s.day_of_week + '</div>' +
           '</div>' +
           '<div class="session-card-body">' +
             '<div class="session-host">' + s.host_name + '</div>' +
-            '<div class="session-time">' + s.start_time + ' – ' + s.end_time + ' AEST</div>' +
+            '<div class="session-time">' + timeStr + '</div>' +
           '</div>' +
         '</div>';
       }).join('');
